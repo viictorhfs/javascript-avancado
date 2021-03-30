@@ -13,19 +13,46 @@ class NegociacaoController {
         this._listaNegociacoes = new Bind(new ListaNegociacoes(), new NegociacoesView($('#negociacoesView')), 'adiciona', 'esvazia', 'ordena', 'inverteOrdem');
 
         this._mensagem = new Bind(new Mensagem(), new MensagemView($('#mensagemView')), 'texto');
+
+
+        /*ConnectionFactory
+            .getConnection()
+            .then(connection => {
+
+                new NegociacaoDao(connection)
+                    .listaTodos()
+                    .then(negociacoes => {
+                        negociacoes.forEach(negociacao => {
+                            this._listaNegociacoes.adiciona(negociacao);
+                        });
+                    });
+            })*/
+
+        ConnectionFactory
+            .getConnection()
+            .then(connection => new NegociacaoDao(connection))
+            .then(dao => dao.listaTodos())
+            .then(negociacoes => {
+                negociacoes.forEach(negociacao => this._listaNegociacoes.adiciona(negociacao));
+            })
     }
 
     adiciona(event) {
         event.preventDefault();
 
-        try {
-            this._listaNegociacoes.adiciona(this._criaNegociacao());
-            this._mensagem.texto = 'Negociação adicionada com sucesso!';
-            this._limpaForm();
-
-        } catch (erro) {
-            this._mensagem.texto = erro;
-        }
+        ConnectionFactory
+            .getConnection()
+            .then(conexao => {
+                let negociacao = this._criaNegociacao();
+                new NegociacaoDao(conexao)
+                    .adiciona(negociacao)
+                    .then(() => {
+                        this._listaNegociacoes.adiciona(negociacao);
+                        this._mensagem.texto = 'Negociação adicionada com sucesso!';
+                        this._limpaForm();
+                    });
+            })
+            .catch(erro => this._mensagem.texto = erro);
     }
 
     importaNegociacoes() {
@@ -45,8 +72,8 @@ class NegociacaoController {
     _criaNegociacao() {
         return new Negociacao(
             DataHelper.textoParaData(this._inputData.value),
-            this._inputQuantidade.value,
-            this._inputValor.value
+            parseInt(this._inputQuantidade.value),
+            parseFloat(this._inputValor.value)
         );
     }
 
